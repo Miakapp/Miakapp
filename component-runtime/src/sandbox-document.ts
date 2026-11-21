@@ -20,6 +20,8 @@ export class SandboxDocumentError extends Error {
 export interface SandboxHostingConfigInput {
   readonly site: string;
   readonly documents: readonly { readonly path: string; readonly headers: readonly SandboxHeader[] }[];
+  /** Paths served by another file, such as every `/v/**` by `/app.html`. */
+  readonly rewrites?: readonly { readonly source: string; readonly destination: string }[];
 }
 
 export function buildSandboxHostingConfig(input: SandboxHostingConfigInput): unknown {
@@ -31,6 +33,9 @@ export function buildSandboxHostingConfig(input: SandboxHostingConfigInput): unk
       site: input.site,
       public: '.',
       ignore: ['firebase.json'],
+      ...(input.rewrites === undefined || input.rewrites.length === 0
+        ? {}
+        : { rewrites: input.rewrites.map((rewrite) => ({ source: rewrite.source, destination: rewrite.destination })) }),
       headers: input.documents.map((document) => ({
         source: document.path,
         headers: document.headers.map((header) => ({ key: header.key, value: header.value })),

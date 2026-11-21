@@ -13,6 +13,7 @@
 //
 // Output (default `dist-sandbox/`):
 //   app.html       the whole-house application document, bootstrap inlined
+//   version.json   this build's document version, for `/v/<version>/app.html`
 //   firebase.json  hosting config carrying the CSP hash of *this* build
 //
 // Deploy with:
@@ -28,6 +29,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { APP_DOCUMENT_VERSION_PATH, APP_DOCUMENT_VERSIONED_PREFIX } from '../src/app-contract';
 import { buildAppDocument } from '../src/app-document';
 import { buildSandboxHostingConfig } from '../src/sandbox-document';
 
@@ -72,13 +74,36 @@ async function main(): Promise<void> {
     hostOrigin,
     sandboxOrigin,
   });
+  // `/v/<version>/app.html` is this same document, cached for good; the shell
+  // learns the version from `/version.json` and frames the copy it already has.
+  // Every `/v/**` serves the current document, so an older version a browser
+  // no longer holds still opens (as the newer document) instead of failing.
   const config = buildSandboxHostingConfig({
     site,
-    documents: [{ path: appDocument.path, headers: appDocument.headers }],
+    documents: [
+      { path: appDocument.path, headers: appDocument.headers },
+      { path: `${APP_DOCUMENT_VERSIONED_PREFIX}**`, headers: appDocument.versionedHeaders },
+      {
+        path: APP_DOCUMENT_VERSION_PATH,
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'no-cache' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+        ],
+      },
+    ],
+    rewrites: [{ source: `${APP_DOCUMENT_VERSIONED_PREFIX}**`, destination: appDocument.path }],
   });
 
   await mkdir(outDir, { recursive: true });
   await writeFile(join(outDir, 'app.html'), appDocument.html, 'utf8');
+  await writeFile(
+    join(outDir, APP_DOCUMENT_VERSION_PATH.slice(1)),
+    `${JSON.stringify({ schema: 'miakapp.sandbox-version/1', version: appDocument.version })}\n`,
+    'utf8',
+  );
   await writeFile(join(outDir, 'firebase.json'), `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
   // Printed so a deployment can be checked against what was built.
@@ -87,6 +112,7 @@ async function main(): Promise<void> {
       `sandbox origin   ${sandboxOrigin}`,
       `host origin      ${hostOrigin}`,
       `hosting site     ${site}`,
+      `version          ${appDocument.version}`,
       `app.html         sha256:${createHash('sha256').update(appDocument.html).digest('hex')} (script sha256-${appDocument.scriptHash})`,
       `output           ${outDir}`,
       '',

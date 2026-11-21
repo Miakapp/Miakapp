@@ -11,7 +11,7 @@
 
 import {
   APP_CALL_ERRORS,
-  APP_DOCUMENT_PATH,
+  appDocumentPath,
   APP_LIMITS,
   appShellMessage,
   isAppReadyAnnouncement,
@@ -89,6 +89,8 @@ export interface HouseAppHostOptions {
   /** Cancels pending readiness as well as an already-bound session. */
   readonly signal?: AbortSignal;
   readonly sandboxOrigin: string;
+  /** The sandbox document's version, when known: framed from its immutable copy. */
+  readonly documentVersion?: string;
   readonly container: HTMLElement;
   readonly home: { readonly id: string; readonly name: string };
   /** Accessible name of the frame, in the shell's language. */
@@ -577,7 +579,7 @@ export function mountHouseApp(
       }, APP_NAVIGATION_PROBE_MS);
       send('app.ping', { challenge });
     });
-    frame.src = `${sandboxOrigin}${APP_DOCUMENT_PATH}#nonce=${nonce}`;
+    frame.src = `${sandboxOrigin}${appDocumentPath(options.documentVersion)}#nonce=${nonce}`;
 
     frameTimer = setTimeout(() => {
       const failure = new ContractViolation('sandbox_unreachable', 'house frame did not announce readiness');

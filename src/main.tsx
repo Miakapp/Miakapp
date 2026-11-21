@@ -42,7 +42,8 @@ if (window.matchMedia('(display-mode: standalone)').matches
   // its first launch lands on the default home instead.
   const launchedHome = requestedHomeId(window.location.pathname);
   if (launchedHome !== null && !deepLink) rememberOpenedHome(launchedHome);
-  if (window.location.pathname !== '/' && !deepLink) window.location.replace('/');
+  // Rewritten in place, not reloaded: a reload would paint the landing first.
+  if (window.location.pathname !== '/' && !deepLink) window.history.replaceState(null, '', '/');
 }
 
 markOpen('boot');
@@ -62,6 +63,16 @@ if ('serviceWorker' in navigator) {
 const root = document.querySelector('#root');
 
 if (!root) throw new Error('Missing #root application container');
+
+// An app launch hid the prerendered landing (index.html): drop it, so the
+// app's first frame is the home, never the landing. The shell's background
+// stays painted until the app has drawn its own.
+const launch = document.documentElement;
+if (launch.hasAttribute('data-miakapp-launch')) {
+  root.replaceChildren();
+  launch.setAttribute('data-miakapp-launch', 'paint');
+  requestAnimationFrame(() => requestAnimationFrame(() => launch.removeAttribute('data-miakapp-launch')));
+}
 
 createRoot(root).render(
   <ProductApp

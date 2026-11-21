@@ -27,6 +27,10 @@ export interface AppDocument {
   readonly html: string;
   readonly scriptHash: string;
   readonly headers: readonly SandboxHeader[];
+  /** Names this exact document: its versioned copy lives at `/v/<version>/app.html`. */
+  readonly version: string;
+  /** The same headers, but cached for good: a version's bytes never change. */
+  readonly versionedHeaders: readonly SandboxHeader[];
 }
 
 /**
@@ -116,20 +120,25 @@ export async function buildAppDocument(input: AppDocumentInput): Promise<AppDocu
 </html>
 `;
 
+  const headers: SandboxHeader[] = [
+    { key: 'Content-Type', value: 'text/html; charset=utf-8' },
+    { key: 'Content-Security-Policy', value: appContentSecurityPolicy(scriptHash, hostOrigin) },
+    { key: 'Permissions-Policy', value: appPermissionsPolicy() },
+    { key: 'Referrer-Policy', value: 'no-referrer' },
+    { key: 'X-Content-Type-Options', value: 'nosniff' },
+    // Reused for five minutes, then revalidated: a repeat open skips the round trip.
+    // Offline (direct mode), the last copy keeps serving for a month.
+    { key: 'Cache-Control', value: 'max-age=300, stale-while-revalidate=2592000' },
+    { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+  ];
   return {
     path: APP_DOCUMENT_PATH,
     html,
     scriptHash,
-    headers: [
-      { key: 'Content-Type', value: 'text/html; charset=utf-8' },
-      { key: 'Content-Security-Policy', value: appContentSecurityPolicy(scriptHash, hostOrigin) },
-      { key: 'Permissions-Policy', value: appPermissionsPolicy() },
-      { key: 'Referrer-Policy', value: 'no-referrer' },
-      { key: 'X-Content-Type-Options', value: 'nosniff' },
-      // Reused for five minutes, then revalidated: a repeat open skips the round trip.
-      // Offline (direct mode), the last copy keeps serving for a month.
-      { key: 'Cache-Control', value: 'max-age=300, stale-while-revalidate=2592000' },
-      { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
-    ],
+    headers,
+    version: (await sha256Base64(html)).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/u, '').slice(0, 32),
+    versionedHeaders: headers.map((header) => (header.key === 'Cache-Control'
+      ? { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }
+      : header)),
   };
 }

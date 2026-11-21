@@ -55,3 +55,10 @@ MIAKAPP_SANDBOX_SITE=miakapp-v4-sandbox bun run build:sandbox
 firebase deploy --config dist-sandbox/firebase.json --project miakapp-v4-staging --only hosting:miakapp-v4-sandbox
 ```
 
+
+The build also writes `version.json`. A shell that has read it frames
+`/v/<version>/app.html`, the same document served as immutable, straight from
+the browser's cache; it reads `version.json` again in the background after each
+opening, so a new sandbox reaches a device at its next opening. Every `/v/**`
+serves the current document. The web app's `frame-src` must allow
+`https://miakapp-v4-sandbox.web.app/v/` (it does in `firebase.staging.json`).

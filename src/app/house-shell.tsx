@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
+import { knownSandboxVersion, refreshSandboxVersion } from './sandbox-version';
 import { parseBarButtons, type AppBarButton, type AppTheme } from '../../component-runtime/src/app-contract';
 import {
   HouseCallError,
@@ -365,6 +366,11 @@ function ConsentStage({
   );
 }
 
+function documentVersionFor(sandboxOrigin: string): { readonly documentVersion?: string } {
+  const version = knownSandboxVersion(sandboxOrigin);
+  return version === undefined ? {} : { documentVersion: version };
+}
+
 const PENDING_LIFECYCLES: ReadonlySet<HouseAppLifecycle> = new Set(['starting', 'loading']);
 
 /**
@@ -429,6 +435,7 @@ function HouseAppStage({
       { pointer: release.pointer, artifact: { bytes: release.artifact.bytes } },
       {
         sandboxOrigin,
+        ...documentVersionFor(sandboxOrigin),
         signal: controller.signal,
         container,
         policy: platformGrantCeiling(release.pointer.requires),
@@ -446,7 +453,12 @@ function HouseAppStage({
         },
         onLifecycle: (next, code) => {
           if (released) return;
-          if (next === 'active') markOpen('app-active');
+          if (next === 'active') {
+            markOpen('app-active');
+            // Once the home is up, not before: the next opening frames the
+            // sandbox document straight from the cache.
+            void refreshSandboxVersion(sandboxOrigin);
+          }
           setLifecycle(next);
           if (code !== undefined) setFailure(code);
         },

@@ -568,6 +568,25 @@ html:has(.house-shell) body {
   font-size: 15px;
 }
 
+/*
+ * While a home opens, its stage stays quiet: the shell's own background, with
+ * no loading words. They only fade in if the home is genuinely slow to start.
+ */
+.house-stage__cover[role='status'] > * {
+  animation: house-cover-late 240ms ease-out 1500ms both;
+}
+
+@keyframes house-cover-late {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .house-stage__cover[role='status'] > * {
+    animation-duration: 1ms;
+  }
+}
+
 .house-stage__cover--solid {
   background: var(--paper);
 }
