@@ -18,6 +18,8 @@ describe('staging shell frame navigation boundary', () => {
     expect(policy?.split(/\s+/u)).toEqual([
       'frame-src',
       'https://miakapp-v4-sandbox.web.app/app.html',
+      // The same document's immutable copies, `/v/<version>/app.html`.
+      'https://miakapp-v4-sandbox.web.app/v/',
       'https://miakapp-v4-staging.firebaseapp.com/__/auth/iframe',
       'https://www.miakapp.com/__/auth/iframe',
       'https://miakapp.com/__/auth/iframe',

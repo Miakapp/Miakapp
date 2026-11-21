@@ -16,6 +16,29 @@
       content="Miakapp transforme votre maison en une interface vivante, façonnée par vous et votre agent."
     />
     <title>Miakapp</title>
+    <!--
+      The installed app starts at `/`, which is also the prerendered landing.
+      Before the first paint, an app launch hides that page and shows the
+      house shell's own background instead; the bundle then opens the
+      remembered home (or the sign-in page) in its place.
+    -->
+    <style>
+      html[data-miakapp-launch], html[data-miakapp-launch] body { background: #f3f0e8; }
+      html[data-miakapp-launch="cover"] #root { visibility: hidden; }
+      @media (prefers-color-scheme: dark) {
+        html[data-miakapp-launch], html[data-miakapp-launch] body { background: #0a1024; }
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var path = location.pathname;
+          if (path !== '/' && path !== '/fr') return;
+          if (!(matchMedia('(display-mode: standalone)').matches || navigator.standalone === true)) return;
+          document.documentElement.setAttribute('data-miakapp-launch', 'cover');
+        } catch (error) { /* the landing shows, as before */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

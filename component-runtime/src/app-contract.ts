@@ -23,6 +23,25 @@ export const APP_BRIDGE_PROTOCOL = 1 as const;
 /** The path the shell frames; the sandbox site serves the bootstrap there. */
 export const APP_DOCUMENT_PATH = '/app.html' as const;
 
+/**
+ * The same document under a versioned address, `/v/<version>/app.html`, served
+ * as immutable: a shell that already knows the version frames it straight from
+ * the browser's cache, with no round trip. The version is read from
+ * `/version.json` in the background, for the next opening.
+ */
+export const APP_DOCUMENT_VERSION_PATH = '/version.json' as const;
+export const APP_DOCUMENT_VERSIONED_PREFIX = '/v/' as const;
+const APP_DOCUMENT_VERSION = /^[A-Za-z0-9_-]{16,64}$/u;
+
+export function isAppDocumentVersion(value: unknown): value is string {
+  return typeof value === 'string' && APP_DOCUMENT_VERSION.test(value);
+}
+
+/** Where to frame the document: its versioned copy when the version is known. */
+export function appDocumentPath(version?: string): string {
+  return isAppDocumentVersion(version) ? `${APP_DOCUMENT_VERSIONED_PREFIX}${version}${APP_DOCUMENT_PATH}` : APP_DOCUMENT_PATH;
+}
+
 export const APP_LIMITS = Object.freeze({
   /** Frame announcement: the sandbox site must answer quickly or it is down. */
   frameReadyMs: 10_000,
