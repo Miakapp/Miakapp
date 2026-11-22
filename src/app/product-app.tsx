@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore } from 'react';
 
 import { App, type AppProps } from './app';
 import {
@@ -420,6 +420,12 @@ export function ProductApp({
     if (route !== 'login' || !snapshot.authenticated) return;
     window.history.replaceState({}, '', pathFor('console', locale));
   }, [route, snapshot.authenticated, locale]);
+
+  // The launch colour painted by index.html gives way in the same frame as
+  // the app's first render: never an empty page in between.
+  useLayoutEffect(() => {
+    document.documentElement.removeAttribute('data-miakapp-launch');
+  }, []);
 
   useEffect(() => () => host.dispose(), [host]);
   useEffect(() => () => pairing?.dispose(), [pairing]);

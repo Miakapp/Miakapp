@@ -18,24 +18,40 @@
     <title>Miakapp</title>
     <!--
       The installed app starts at `/`, which is also the prerendered landing.
-      Before the first paint, an app launch hides that page and shows the
-      house shell's own background instead; the bundle then opens the
-      remembered home (or the sign-in page) in its place.
+      Before the first paint, an app launch hides that page; any opening of a
+      home (launch, `/h/<id>`, `/app`) shows that home's remembered colour, or
+      the shell's own, until the bundle draws the home (or the sign-in page).
     -->
     <style>
-      html[data-miakapp-launch], html[data-miakapp-launch] body { background: #f3f0e8; }
+      html[data-miakapp-launch], html[data-miakapp-launch] body { background: var(--miakapp-launch-paint, #f3f0e8); }
       html[data-miakapp-launch="cover"] #root { visibility: hidden; }
       @media (prefers-color-scheme: dark) {
-        html[data-miakapp-launch], html[data-miakapp-launch] body { background: #0a1024; }
+        html[data-miakapp-launch], html[data-miakapp-launch] body { background: var(--miakapp-launch-paint, #0a1024); }
       }
     </style>
     <script>
       (function () {
         try {
           var path = location.pathname;
-          if (path !== '/' && path !== '/fr') return;
-          if (!(matchMedia('(display-mode: standalone)').matches || navigator.standalone === true)) return;
-          document.documentElement.setAttribute('data-miakapp-launch', 'cover');
+          var landing = path === '/' || path === '/fr';
+          var homePath = /^\/h\/([a-z][a-z0-9-]{1,61}[a-z0-9])\/?$/.exec(path);
+          var app = path === '/app' || path.indexOf('/app/') === 0 || homePath !== null;
+          var installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+          // A tab on the landing stays the landing; anything that opens a home is painted.
+          if (!(app || (landing && installed))) return;
+          var root = document.documentElement;
+          root.setAttribute('data-miakapp-launch', landing ? 'cover' : 'paint');
+          // The home's own colour (src/app/home-paint.ts), behind the page
+          // and under the status bar, from the first frame.
+          var home = homePath ? homePath[1] : localStorage.getItem('miakapp.last-home');
+          var paint = home && JSON.parse(localStorage.getItem('miakapp.home-paint.v1') || '{}')[home];
+          if (typeof paint !== 'string' || !/^(rgba?\([\d.,\s]+\)|#[0-9a-fA-F]{6})$/.test(paint)) {
+            paint = matchMedia('(prefers-color-scheme: dark)').matches ? '#0a1024' : '#f3f0e8';
+          } else {
+            root.style.setProperty('--miakapp-launch-paint', paint);
+          }
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', paint);
         } catch (error) { /* the landing shows, as before */ }
       })();
     </script>

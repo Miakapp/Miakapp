@@ -19,6 +19,7 @@ import {
   type HouseFavoritesStore,
 } from './house-favorites';
 import { hasNoHomeYet, homeWasPickedForThePerson } from './home-pick';
+import { homePaint } from './home-paint';
 import { HouseShell, type HouseStage, type MountHouseApp } from './house-shell';
 import { createHouseSnapshotStore, markOpen, type HouseSnapshotStore } from './house-snapshot';
 import type { HomeSummary, TrustedHost } from './host';
@@ -311,14 +312,14 @@ export function App({
     if (meta === null || typeof window.matchMedia !== 'function') return undefined;
     const previous = meta.content;
     const dark = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = (): void => { meta.content = dark.matches ? '#0a1024' : '#f3f0e8'; };
+    const apply = (): void => { meta.content = homePaint(homeId) ?? (dark.matches ? '#0a1024' : '#f3f0e8'); };
     apply();
     dark.addEventListener('change', apply);
     return () => {
       dark.removeEventListener('change', apply);
       meta.content = previous;
     };
-  }, []);
+  }, [homeId]);
 
   // The app picked this home (last opened, or the build default) and it does
   // not open: go to one of the person's own homes instead of a dead end.

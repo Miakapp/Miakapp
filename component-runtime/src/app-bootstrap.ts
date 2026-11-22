@@ -355,6 +355,18 @@ function start(): void {
         theme = String(payload.theme);
         emit(themeListeners, theme);
         break;
+      case 'app.paint.request': {
+        // The home's own background, so the shell can paint it before the
+        // frame is up at the next opening. Only an opaque colour is worth it.
+        const pick = (element: Element | null): string | undefined => {
+          if (element === null) return undefined;
+          const colour = getComputedStyle(element).backgroundColor;
+          return /^rgb\(/u.test(colour) ? colour : undefined;
+        };
+        const background = pick(document.body) ?? pick(document.documentElement);
+        if (background !== undefined) send('app.paint', { background });
+        break;
+      }
       case 'call.settled': {
         const pending = calls.get(String(payload.id));
         if (pending === undefined) return;

@@ -110,6 +110,8 @@ export interface HouseAppHostOptions {
   readonly call: (name: string, args: unknown, options: { readonly timeoutMs: number; readonly signal: AbortSignal }) => Promise<unknown>;
   readonly onLifecycle: (lifecycle: HouseAppLifecycle, failure?: HouseAppFailureCode) => void;
   readonly onFocusShell?: () => void;
+  /** The home's background colour, reported once after it is up. */
+  readonly onPaint?: (background: string) => void;
   /** The buttons the home wants in the Miakapp bar, already validated. */
   readonly onBarButtons?: (buttons: readonly AppBarButton[]) => void;
   /**
@@ -290,6 +292,7 @@ export function mountHouseApp(
   let nextProbe = 1;
   let missed = 0;
   let frameLoads = 0;
+  let painted = false;
   let navigationProbe: number | undefined;
   let navigationTimer: ReturnType<typeof setTimeout> | undefined;
   let windowStart = 0;
@@ -432,6 +435,13 @@ export function mountHouseApp(
           bootTimer = undefined;
           lifecycle = 'active';
           options.onLifecycle('active');
+          // A sandbox that predates this message ignores it.
+          if (options.onPaint !== undefined) send('app.paint.request', {});
+          break;
+        case 'app.paint':
+          if (painted || options.onPaint === undefined) return;
+          painted = true;
+          options.onPaint(message.background);
           break;
         case 'app.crash':
           settle('crashed', message.reason);

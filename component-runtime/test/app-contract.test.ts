@@ -156,3 +156,14 @@ describe('/app.html', () => {
     })).rejects.toThrow('differ');
   });
 });
+
+describe('app.paint', () => {
+  test('carries one plain colour and nothing else', () => {
+    expect(parseAppFrameMessage({ v: 1, kind: 'app.paint', payload: { background: 'rgb(10, 16, 36)' } }))
+      .toEqual({ kind: 'app.paint', background: 'rgb(10, 16, 36)' });
+    for (const background of ['url(https://evil.example/)', 'red', 'rgb(1,2,3);color:red', 42]) {
+      expect(() => parseAppFrameMessage({ v: 1, kind: 'app.paint', payload: { background } })).toThrow();
+    }
+    expect(() => parseAppFrameMessage({ v: 1, kind: 'app.paint', payload: { background: '#0a1024', extra: 1 } })).toThrow();
+  });
+});
