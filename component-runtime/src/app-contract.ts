@@ -61,6 +61,8 @@ export type AppFrameMessage =
   | { readonly kind: 'app.ready' }
   | { readonly kind: 'app.crash'; readonly reason: AppCrashReason }
   | { readonly kind: 'app.pong'; readonly challenge: number }
+  /** The home's background colour, asked by the shell once the home is up (`app.paint.request`). */
+  | { readonly kind: 'app.paint'; readonly background: string }
   | {
     readonly kind: 'call.start';
     readonly id: string;
@@ -262,6 +264,11 @@ export function parseAppFrameMessage(value: unknown): AppFrameMessage {
       if (!APP_CRASH_REASONS.includes(reason as AppCrashReason)) violation('unknown crash reason');
       return { kind: 'app.crash', reason: reason as AppCrashReason };
     }
+    case 'app.paint': {
+      exactKeys(payload, ['background']);
+      if (!isAppPaint(payload.background)) violation('paint colour is invalid');
+      return { kind: 'app.paint', background: payload.background };
+    }
     case 'app.pong': {
       exactKeys(payload, ['challenge']);
       if (!Number.isSafeInteger(payload.challenge)) violation('heartbeat challenge is invalid');
@@ -293,6 +300,17 @@ export function parseAppFrameMessage(value: unknown): AppFrameMessage {
     default:
       return violation(`app message kind is not allowed: ${String(value.kind)}`);
   }
+}
+
+/**
+ * A plain colour the shell can paint behind the home before its frame is up:
+ * `rgb()`/`rgba()` as browsers compute it, or a hex colour. Nothing else (no
+ * url, no gradient, no var), so it can never load or name anything.
+ */
+const APP_PAINT = /^(?:rgba?\(\s*\d{1,3}(?:\.\d+)?\s*,\s*\d{1,3}(?:\.\d+)?\s*,\s*\d{1,3}(?:\.\d+)?\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)|#[0-9a-fA-F]{6})$/u;
+
+export function isAppPaint(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 64 && APP_PAINT.test(value);
 }
 
 /** Wraps a shell-to-frame message in the bridge envelope. */

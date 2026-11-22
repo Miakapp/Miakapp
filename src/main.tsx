@@ -65,13 +65,12 @@ const root = document.querySelector('#root');
 if (!root) throw new Error('Missing #root application container');
 
 // An app launch hid the prerendered landing (index.html): drop it, so the
-// app's first frame is the home, never the landing. The shell's background
-// stays painted until the app has drawn its own.
+// app's first frame is the home, never the landing. The launch colour stays
+// painted until the app's first render is in the page (ProductApp).
 const launch = document.documentElement;
-if (launch.hasAttribute('data-miakapp-launch')) {
+if (launch.getAttribute('data-miakapp-launch') === 'cover') {
   root.replaceChildren();
   launch.setAttribute('data-miakapp-launch', 'paint');
-  requestAnimationFrame(() => requestAnimationFrame(() => launch.removeAttribute('data-miakapp-launch')));
 }
 
 createRoot(root).render(

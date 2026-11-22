@@ -7,8 +7,9 @@
 // person's own profile (their homes, their account) is always one tap or one
 // keystroke away, whatever the home draws.
 
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
+import { homePaint, rememberHomePaint } from './home-paint';
 import { knownSandboxVersion, refreshSandboxVersion } from './sandbox-version';
 import { parseBarButtons, type AppBarButton, type AppTheme } from '../../component-runtime/src/app-contract';
 import {
@@ -462,6 +463,8 @@ function HouseAppStage({
           setLifecycle(next);
           if (code !== undefined) setFailure(code);
         },
+        // Remembered for the next opening: painted before the frame is up.
+        onPaint: (background) => rememberHomePaint(home.id, background),
         onFocusShell: () => latest.current.focusShell(),
         onBarButtons: (buttons) => latest.current.onBarButtons(buttons),
       },
@@ -501,8 +504,11 @@ function HouseAppStage({
   return (
     <div className="house-stage__app">
       <div
-        className={pending || crashed ? 'house-stage__frame is-hidden' : 'house-stage__frame'}
+        // Pending, the frame is only transparent: it keeps rendering, so it
+        // shows its first frame already drawn instead of a blank one.
+        className={crashed ? 'house-stage__frame is-hidden' : pending ? 'house-stage__frame is-pending' : 'house-stage__frame'}
         data-testid="house-frame-box"
+        inert={pending || crashed}
         ref={containerRef}
       />
       {pending ? (
@@ -675,6 +681,10 @@ export function HouseShell(props: HouseShellProps): React.JSX.Element {
   const panelRef = useRef<HTMLElement | null>(null);
   const panelId = useId();
   const [barButtons, setBarButtons] = useBarButtons(home.id);
+  // The home's own colour from its last opening, while it opens and runs; the
+  // panels (consent, welcome, errors) keep the shell's colours.
+  const remembered = useMemo(() => homePaint(home.id), [home.id]);
+  const paint = stage.kind === 'app' || stage.kind === 'loading' ? remembered : undefined;
   // The interface always starts on its own home screen, whatever was selected
   // when the buttons were cached; it marks another one active if it wants.
   const [selected, setSelected] = useState<string | null>(null);
@@ -724,7 +734,11 @@ export function HouseShell(props: HouseShellProps): React.JSX.Element {
     : new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(consent.grantedAt);
 
   return (
-    <div className="house-shell" data-stage={stage.kind}>
+    <div
+      className="house-shell"
+      data-stage={stage.kind}
+      {...(paint === undefined ? {} : { 'data-painted': '', style: { '--house-paint': paint } as React.CSSProperties })}
+    >
       <main className="house-stage">
         {stage.kind === 'consent' ? (
           <ConsentStage home={home} onAccept={props.onAcceptConsent} onDecline={props.onDeclineConsent} t={t} />
